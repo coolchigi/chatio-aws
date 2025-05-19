@@ -20,6 +20,43 @@ This application uses the following AWS services:
 - **Amazon Cognito**: User authentication and authorization
 - **Vector Databases**: Options include Amazon OpenSearch, Aurora with pgvector, DynamoDB, Kendra, or third-party options like Pinecone
 
+## User Flow
+
+```mermaid
+flowchart TD
+    Start([Start]) --> Auth[User Authentication]
+    Auth --> Dashboard[Project Dashboard]
+
+    Dashboard --> NewProject[Create New Project]
+
+    NewProject --> Step1[Step 1: Project Setup]
+    Step1 --> Step2[Step 2: Document Storage Configuration]
+    Step2 --> Step3[Step 3: Vector Database Selection]
+    Step3 --> CostEstimate1[View Database Cost Estimate]
+    CostEstimate1 --> Step4[Step 4: Bedrock Model Selection]
+    Step4 --> CostEstimate2[View Model Cost Estimate]
+    CostEstimate2 --> Step5[Step 5: Knowledge Base Creation]
+    Step5 --> Step6[Step 6: Deployment Options]
+
+    Step6 --> DeployOptions{Choose Deployment}
+    DeployOptions --> AmplifyDeploy[Deploy to Amplify]
+    DeployOptions --> ExportTemplate[Export as Template]
+
+    AmplifyDeploy --> DeployComplete[Deployment Complete]
+    ExportTemplate --> DownloadTemplate[Download Template]
+
+    DeployComplete --> ChatInterface[Access Chat Interface]
+    DownloadTemplate --> Instructions[View Deployment Instructions]
+
+    Dashboard --> ExistingProjects[View Existing Projects]
+    ExistingProjects --> ManageProject[Manage Project]
+    ManageProject --> EditConfig[Edit Configuration]
+    ManageProject --> ViewResources[View Resources]
+
+    EditConfig --> Step1
+
+```
+
 ## Getting Started
 
 ### Prerequisites
@@ -32,27 +69,36 @@ This application uses the following AWS services:
 
 1. Clone the repository:
 
-   ```
-   git clone https://github.com/yourusername/chatio-aws.git
-   cd chatio-aws
-   ```
+```
+
+git clone https://github.com/yourusername/chatio-aws.git
+cd chatio-aws
+
+```
 
 2. Install dependencies:
 
-   ```
-   npm install
-   ```
+```
+
+npm install
+
+```
 
 3. Create a `.env` file based on `.env.example` and fill in your AWS configuration:
 
-   ```
-   cp .env.example .env
-   ```
+```
+
+cp .env.example .env
+
+```
 
 4. Start the development server:
-   ```
-   npm start
-   ```
+
+```
+
+npm start
+
+```
 
 ## AWS Setup
 
