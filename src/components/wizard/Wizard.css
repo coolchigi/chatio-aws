@@ -1,0 +1,428 @@
+.wizard-container {
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 2rem;
+  background-color: #fff;
+  border-radius: 8px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+}
+
+.wizard-header {
+  margin-bottom: 2rem;
+  text-align: center;
+}
+
+.wizard-header h1 {
+  color: #232f3e;
+  margin-bottom: 1rem;
+}
+
+.progress-bar {
+  height: 8px;
+  background-color: #eee;
+  border-radius: 4px;
+  margin-bottom: 0.5rem;
+  overflow: hidden;
+}
+
+.progress {
+  height: 100%;
+  background-color: #ff9900;
+  transition: width 0.3s ease;
+}
+
+.step-indicator {
+  font-size: 0.9rem;
+  color: #666;
+}
+
+.wizard-content {
+  min-height: 400px;
+}
+
+.step-container {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.step-container h2 {
+  color: #232f3e;
+  margin-bottom: 0.5rem;
+}
+
+.wizard-buttons {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 2rem;
+}
+
+.wizard-buttons button {
+  padding: 0.75rem 1.5rem;
+  border-radius: 4px;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.wizard-buttons button:first-child {
+  background-color: #f0f0f0;
+  border: 1px solid #ddd;
+  color: #333;
+}
+
+.wizard-buttons button:last-child {
+  background-color: #ff9900;
+  border: none;
+  color: white;
+}
+
+.wizard-buttons button:disabled {
+  background-color: #f0f0f0;
+  color: #999;
+  cursor: not-allowed;
+}
+
+.form-group {
+  margin-bottom: 1.5rem;
+}
+
+.form-group label {
+  display: block;
+  margin-bottom: 0.5rem;
+  font-weight: 500;
+}
+
+.form-group input,
+.form-group select {
+  width: 100%;
+  padding: 0.75rem;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 1rem;
+}
+
+.cost-summary {
+  background-color: #f8f8f8;
+  padding: 1.5rem;
+  border-radius: 4px;
+  margin-top: 1.5rem;
+}
+
+.cost-summary h3 {
+  margin-top: 0;
+  color: #232f3e;
+}
+
+/* src/components/wizard/Wizard.css (additional styles) */
+
+/* Option Selector */
+.option-selector {
+  display: flex;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.option {
+  flex: 1;
+  padding: 1.5rem;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.option:hover {
+  border-color: #aaa;
+}
+
+.option.selected {
+  border-color: #ff9900;
+  background-color: #fff9e6;
+}
+
+.option h3 {
+  margin-top: 0;
+  color: #232f3e;
+}
+
+/* Input with button */
+.input-with-button {
+  display: flex;
+}
+
+.input-with-button input {
+  flex: 1;
+  border-right: none;
+  border-top-right-radius: 0;
+  border-bottom-right-radius: 0;
+}
+
+.input-with-button button {
+  border-top-left-radius: 0;
+  border-bottom-left-radius: 0;
+  background-color: #eee;
+  border: 1px solid #ddd;
+  padding: 0 1rem;
+  cursor: pointer;
+}
+
+/* Model Cards */
+.model-options {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.model-card {
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  padding: 1.5rem;
+  cursor: pointer;
+  position: relative;
+  transition: all 0.2s ease;
+}
+
+.model-card:hover {
+  border-color: #aaa;
+}
+
+.model-card.selected {
+  border-color: #ff9900;
+  background-color: #fff9e6;
+}
+
+.model-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1rem;
+}
+
+.model-header h3 {
+  margin: 0;
+  color: #232f3e;
+}
+
+.provider {
+  font-size: 0.9rem;
+  color: #666;
+}
+
+.model-details {
+  margin-top: 1rem;
+}
+
+.detail-item {
+  margin-bottom: 0.5rem;
+  display: flex;
+  justify-content: space-between;
+}
+
+.detail-label {
+  font-weight: 500;
+}
+
+.selected-indicator {
+  position: absolute;
+  top: 1rem;
+  right: 1rem;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background-color: #ff9900;
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Info Box */
+.info-box {
+  background-color: #f8f8f8;
+  padding: 0.75rem;
+  border-radius: 4px;
+  border: 1px solid #eee;
+}
+
+/* Deployment Options */
+.deployment-options {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.deployment-option {
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  padding: 1.5rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.deployment-option:hover {
+  border-color: #aaa;
+}
+
+.deployment-option.selected {
+  border-color: #ff9900;
+  background-color: #fff9e6;
+}
+
+.deployment-option h3 {
+  margin-top: 0;
+  color: #232f3e;
+}
+
+.deployment-option ul {
+  padding-left: 1.5rem;
+  margin-bottom: 0;
+}
+
+/* Summary Styles */
+.summary-section {
+  margin-bottom: 2rem;
+}
+
+.summary-item {
+  display: flex;
+  justify-content: space-between;
+  padding: 0.75rem 0;
+  border-bottom: 1px solid #eee;
+}
+
+.summary-label {
+  font-weight: 500;
+  color: #555;
+}
+
+.summary-value {
+  color: #232f3e;
+}
+
+.deployment-actions {
+  margin: 2rem 0;
+  text-align: center;
+}
+
+.primary-button {
+  background-color: #ff9900;
+  color: white;
+  border: none;
+  padding: 0.75rem 1.5rem;
+  border-radius: 4px;
+  font-size: 1rem;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.primary-button:disabled {
+  background-color: #f0f0f0;
+  color: #999;
+  cursor: not-allowed;
+}
+
+.secondary-button {
+  background-color: #eee;
+  color: #333;
+  border: 1px solid #ddd;
+  padding: 0.75rem 1.5rem;
+  border-radius: 4px;
+  font-size: 1rem;
+  cursor: pointer;
+}
+
+/* Add these styles to src/components/wizard/Wizard.css */
+/* Add these styles to src/components/wizard/Wizard.css */
+
+/* Knowledge Base Creation Layout */
+.kb-summary-layout {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1.5rem;
+  margin: 1.5rem 0;
+}
+
+@media (max-width: 768px) {
+  .kb-summary-layout {
+    grid-template-columns: 1fr;
+  }
+}
+
+.kb-panel {
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+/* Collapsible Header */
+.collapsible-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem 1.5rem;
+  background-color: #f8f8f8;
+  cursor: pointer;
+  border-bottom: 1px solid #ddd;
+}
+
+.collapsible-header h3 {
+  margin: 0;
+  color: #232f3e;
+}
+
+.collapse-icon {
+  font-size: 1.5rem;
+  font-weight: bold;
+  color: #666;
+  transition: transform 0.2s ease;
+}
+
+.collapse-icon.expanded {
+  transform: rotate(0deg);
+}
+
+/* Panel Content */
+.config-cards {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  padding: 1.5rem;
+}
+
+.config-card {
+  margin: 0;
+  box-shadow: none;
+  border: 1px solid #eee;
+}
+
+.cost-panel-content {
+  padding: 1.5rem;
+}
+
+.usage-sliders {
+  margin-bottom: 1.5rem;
+}
+
+/* Simplify the sliders for the side panel */
+.kb-panel .slider-group {
+  margin-bottom: 1rem;
+}
+
+.kb-panel .slider-group label {
+  display: block;
+  margin-bottom: 0.25rem;
+}
+
+.kb-panel .slider-group span {
+  display: block;
+  margin-bottom: 0.5rem;
+  font-weight: 500;
+}
+
+.kb-panel .cost-estimator {
+  margin-top: 0;
+  padding: 0;
+  background-color: transparent;
+}
