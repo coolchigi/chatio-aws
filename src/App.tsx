@@ -1,7 +1,7 @@
-import React from 'react';
-import './App.css';
-import AuthComponent from './components/auth/AuthComponent';
-import DocumentChatPage from './pages/DocumentChatPage';
+import React from "react";
+import "./App.css";
+import AuthComponent from "./components/auth/AuthComponent";
+import Wizard from "./components/wizard/Wizard";
 
 function App() {
   return (
@@ -11,7 +11,7 @@ function App() {
       </header>
       <main>
         <AuthComponent>
-          <DocumentChatPage />
+          <Wizard />
         </AuthComponent>
       </main>
       <footer>
