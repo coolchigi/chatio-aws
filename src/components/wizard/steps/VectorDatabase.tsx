@@ -14,7 +14,6 @@ import {
   RadioGroupField,
   Accordion,
   Link,
-  Divider,
   Grid,
   Icon,
   SliderField,
@@ -455,129 +454,6 @@ const VectorDatabase: React.FC<VectorDatabaseProps> = ({
                             }
                           ]}
                         />
-
-                        {/* <Expander type="single" isCollapsible={true}>
-                          <ExpanderItem
-                            title="Detailed Information & Configuration"
-                            value={`${db.id}-details`}
-                          >
-                            <Flex direction="column" gap={tokens.space.medium}>
-                              <Grid
-                                templateColumns="1fr 1fr"
-                                gap={tokens.space.medium}
-                              >
-                                <View>
-                                  <Text
-                                    fontWeight={tokens.fontWeights.semibold}
-                                    fontSize={tokens.fontSizes.small}
-                                    marginBottom={tokens.space.xs}
-                                  >
-                                    Pricing Structure
-                                  </Text>
-                                  <Text fontSize={tokens.fontSizes.xs}>
-                                    {db.pricing}
-                                  </Text>
-                                </View>
-
-                                <View>
-                                  <Text
-                                    fontWeight={tokens.fontWeights.semibold}
-                                    fontSize={tokens.fontSizes.small}
-                                    marginBottom={tokens.space.xs}
-                                  >
-                                    Best For
-                                  </Text>
-                                  <Text fontSize={tokens.fontSizes.xs}>
-                                    {db.id === "opensearch" &&
-                                      "Large-scale search applications with complex queries"}
-                                    {db.id === "pinecone" &&
-                                      "Real-time applications requiring fast vector searches"}
-                                    {db.id === "aurora" &&
-                                      "Applications needing both relational and vector data"}
-                                    {db.id === "dynamodb" &&
-                                      "Serverless applications with predictable access patterns"}
-                                    {db.id === "kendra" &&
-                                      "Enterprise search with natural language queries"}
-                                  </Text>
-                                </View>
-                              </Grid>
-
-                              {showComparison && (
-                                <View>
-                                  <Text
-                                    fontWeight={tokens.fontWeights.semibold}
-                                    fontSize={tokens.fontSizes.small}
-                                    marginBottom={tokens.space.xs}
-                                  >
-                                    Performance Characteristics
-                                  </Text>
-                                  <Grid
-                                    templateColumns="repeat(3, 1fr)"
-                                    gap={tokens.space.small}
-                                  >
-                                    <Card
-                                      padding={tokens.space.small}
-                                      backgroundColor={tokens.colors.green[10]}
-                                    >
-                                      <Text
-                                        fontSize={tokens.fontSizes.xs}
-                                        textAlign="center"
-                                      >
-                                        <strong>Query Speed</strong>
-                                        <br />
-                                        {db.id === "pinecone"
-                                          ? "Excellent"
-                                          : db.id === "opensearch"
-                                          ? "Very Good"
-                                          : db.id === "aurora"
-                                          ? "Good"
-                                          : "Good"}
-                                      </Text>
-                                    </Card>
-                                    <Card
-                                      padding={tokens.space.small}
-                                      backgroundColor={tokens.colors.blue[10]}
-                                    >
-                                      <Text
-                                        fontSize={tokens.fontSizes.xs}
-                                        textAlign="center"
-                                      >
-                                        <strong>Scalability</strong>
-                                        <br />
-                                        {db.id === "dynamodb"
-                                          ? "Excellent"
-                                          : db.id === "opensearch"
-                                          ? "Excellent"
-                                          : db.id === "pinecone"
-                                          ? "Very Good"
-                                          : "Good"}
-                                      </Text>
-                                    </Card>
-                                    <Card
-                                      padding={tokens.space.small}
-                                      backgroundColor={tokens.colors.orange[10]}
-                                    >
-                                      <Text
-                                        fontSize={tokens.fontSizes.xs}
-                                        textAlign="center"
-                                      >
-                                        <strong>Cost Efficiency</strong>
-                                        <br />
-                                        {db.id === "dynamodb"
-                                          ? "Excellent"
-                                          : db.id === "pinecone"
-                                          ? "Good"
-                                          : db.id === "aurora"
-                                          ? "Good"
-                                          : "Fair"}
-                                      </Text>
-                                    </Card>
-                                  </Grid>
-                                </View>
-                              )}
-                            </Flex>
-                          </ExpanderItem>
-                        </Expander> */}
                       </Card>
                     )}
                   </Flex>
