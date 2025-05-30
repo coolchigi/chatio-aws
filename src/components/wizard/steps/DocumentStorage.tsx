@@ -1,4 +1,3 @@
-// src/components/wizard/steps/DocumentStorage.tsx
 import React, { useState, useRef } from "react";
 import {
   Heading,
