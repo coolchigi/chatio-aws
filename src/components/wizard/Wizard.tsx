@@ -1,18 +1,16 @@
-// src/components/wizard/Wizard.tsx
 import React, { useState } from "react";
 import {
   Card,
   Heading,
   Text,
   Flex,
-  Button,
   View,
   useTheme
 } from "@aws-amplify/ui-react";
 import "@aws-amplify/ui-react/styles.css";
 import ProjectSetup from "./steps/ProjectSetup";
 import DocumentStorage from "./steps/DocumentStorage";
-import VectorDatabaseSelector from "../cost-optimizer/VectorDatabaseSelector";
+import VectorDatabase from "./steps/VectorDatabase";
 import ModelSelector from "./steps/ModelSelector";
 import KnowledgeBaseCreation from "./steps/KnowledgeBaseCreation";
 import DeploymentOptions from "./steps/DeploymentOptions";
@@ -80,26 +78,12 @@ const Wizard: React.FC = () => {
         );
       case STEPS.VECTOR_DATABASE:
         return (
-          <Flex direction="column" gap={tokens.space.medium}>
-            <Heading level={3}>Step 3: Select Vector Database</Heading>
-            <Text>Choose a vector database for your knowledge base</Text>
-            <VectorDatabaseSelector
-              onSelect={(id) => updateConfig({ vectorDatabaseId: id })}
-              selectedId={projectConfig.vectorDatabaseId}
-            />
-            <Flex justifyContent="space-between" marginTop={tokens.space.large}>
-              <Button onClick={prevStep} variation="link">
-                Back
-              </Button>
-              <Button
-                onClick={nextStep}
-                variation="primary"
-                isDisabled={!projectConfig.vectorDatabaseId}
-              >
-                Next
-              </Button>
-            </Flex>
-          </Flex>
+          <VectorDatabase
+            config={projectConfig}
+            updateConfig={updateConfig}
+            onNext={nextStep}
+            onBack={prevStep}
+          />
         );
       case STEPS.MODEL_SELECTION:
         return (
