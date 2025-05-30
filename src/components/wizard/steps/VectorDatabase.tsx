@@ -1,4 +1,3 @@
-// src/components/wizard/steps/VectorDatabase.tsx
 import React, { useState } from "react";
 import {
   Heading,
