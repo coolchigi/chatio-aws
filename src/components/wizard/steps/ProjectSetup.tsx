@@ -286,7 +286,7 @@ const ProjectSetup: React.FC<ProjectSetupProps> = ({
               isValidated ? tokens.colors.primary[60] : undefined
             }
           >
-            Continue to Document Storage →
+            Continue to Vector Database →
           </Button>
         </Flex>
       </Flex>

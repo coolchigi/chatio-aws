@@ -23,7 +23,6 @@ interface ModelSelectorProps {
   config: {
     name: string;
     region: string;
-    s3Bucket: string;
     vectorDatabaseId: string;
     modelId: string;
     knowledgeBaseId: string;

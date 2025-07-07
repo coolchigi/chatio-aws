@@ -24,7 +24,6 @@ interface VectorDatabaseProps {
   config: {
     name: string;
     region: string;
-    s3Bucket: string;
     vectorDatabaseId: string;
     modelId: string;
     knowledgeBaseId: string;
@@ -502,7 +501,7 @@ const VectorDatabase: React.FC<VectorDatabaseProps> = ({
         {/* Navigation */}
         <Flex justifyContent="space-between" marginTop={tokens.space.medium}>
           <Button onClick={onBack} variation="link" size="large">
-            ← Back to Document Storage
+            ← Back to Project Setup
           </Button>
 
           <Button
