@@ -9,7 +9,6 @@ import {
 } from "@aws-amplify/ui-react";
 import "@aws-amplify/ui-react/styles.css";
 import ProjectSetup from "./steps/ProjectSetup";
-import DocumentStorage from "./steps/DocumentStorage";
 import VectorDatabase from "./steps/VectorDatabase";
 import ModelSelector from "./steps/ModelSelector";
 import KnowledgeBaseCreation from "./steps/KnowledgeBaseCreation";
@@ -20,12 +19,11 @@ import "./Wizard.css";
 // Define the steps in our wizard
 const STEPS = {
   PROJECT_SETUP: 0,
-  DOCUMENT_STORAGE: 1,
-  VECTOR_DATABASE: 2,
-  MODEL_SELECTION: 3,
-  KNOWLEDGE_BASE: 4,
-  DEPLOYMENT: 5,
-  SUMMARY: 6
+  VECTOR_DATABASE: 1,  
+  MODEL_SELECTION: 2,  
+  KNOWLEDGE_BASE: 3,   
+  DEPLOYMENT: 4,       
+  SUMMARY: 5         
 };
 
 const Wizard: React.FC = () => {
@@ -34,29 +32,24 @@ const Wizard: React.FC = () => {
   const [projectConfig, setProjectConfig] = useState({
     name: "",
     region: "us-east-1",
-    s3Bucket: "",
     vectorDatabaseId: "",
     modelId: "",
     knowledgeBaseId: "",
     deploymentOption: ""
   });
 
-  // Update configuration based on step inputs
   const updateConfig = (updates: Partial<typeof projectConfig>) => {
     setProjectConfig((prev) => ({ ...prev, ...updates }));
   };
 
-  // Navigate to next step
   const nextStep = () => {
     setCurrentStep((prev) => prev + 1);
   };
 
-  // Navigate to previous step
   const prevStep = () => {
     setCurrentStep((prev) => prev - 1);
   };
 
-  // Render the current step
   const renderStep = () => {
     switch (currentStep) {
       case STEPS.PROJECT_SETUP:
@@ -65,15 +58,6 @@ const Wizard: React.FC = () => {
             config={projectConfig}
             updateConfig={updateConfig}
             onNext={nextStep}
-          />
-        );
-      case STEPS.DOCUMENT_STORAGE:
-        return (
-          <DocumentStorage
-            config={projectConfig}
-            updateConfig={updateConfig}
-            onNext={nextStep}
-            onBack={prevStep}
           />
         );
       case STEPS.VECTOR_DATABASE:
@@ -125,7 +109,6 @@ const Wizard: React.FC = () => {
     }
   };
 
-  // Calculate progress percentage
   const progress = ((currentStep + 1) / Object.keys(STEPS).length) * 100;
 
   return (
