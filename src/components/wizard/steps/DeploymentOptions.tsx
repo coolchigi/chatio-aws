@@ -22,7 +22,6 @@ interface DeploymentOptionsProps {
   config: {
     name: string;
     region: string;
-    s3Bucket: string;
     vectorDatabaseId: string;
     modelId: string;
     knowledgeBaseId: string;
@@ -59,7 +58,6 @@ const DeploymentOptions: React.FC<DeploymentOptionsProps> = ({
     customDomain: "",
     environmentVariables: {
       REACT_APP_AWS_REGION: config.region,
-      REACT_APP_S3_BUCKET: config.s3Bucket,
       REACT_APP_VECTOR_DB: config.vectorDatabaseId,
       REACT_APP_MODEL_ID: config.modelId,
       REACT_APP_KB_ID: config.knowledgeBaseId
@@ -473,9 +471,6 @@ const DeploymentOptions: React.FC<DeploymentOptionsProps> = ({
                                   Resources Created:
                                 </Text>
                                 <Flex direction="column" gap={tokens.space.xxs}>
-                                  <Text fontSize={tokens.fontSizes.xs}>
-                                    • S3 bucket for hosting
-                                  </Text>
                                   <Text fontSize={tokens.fontSizes.xs}>
                                     • CloudFront distribution
                                   </Text>

@@ -5,7 +5,6 @@ interface CostSummaryProps {
   config: {
     name: string;
     region: string;
-    s3Bucket: string;
     vectorDatabaseId: string;
     modelId: string;
     knowledgeBaseId: string;
@@ -60,10 +59,6 @@ const CostSummary: React.FC<CostSummaryProps> = ({
         <div className="summary-item">
           <span className="summary-label">AWS Region:</span>
           <span className="summary-value">{config.region}</span>
-        </div>
-        <div className="summary-item">
-          <span className="summary-label">S3 Bucket:</span>
-          <span className="summary-value">{config.s3Bucket}</span>
         </div>
         <div className="summary-item">
           <span className="summary-label">Vector Database:</span>
