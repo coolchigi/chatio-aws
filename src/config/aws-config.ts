@@ -25,13 +25,13 @@ export const awsConfig = {
   }
 };
 
-// Vector database options with pricing information
+// Vector database options (pricing is dynamic; see pricingDetails for official docs)
 export const vectorDatabaseOptions = [
   {
     id: 'opensearch',
     name: 'Amazon OpenSearch Service',
     description: 'Fully managed search and analytics engine with vector search capabilities',
-    pricing: 'Starting at $0.10 per hour for t3.small instance',
+    pricing: 'Starts at $0.209/hr for or1.large.search (2 vCPU, 16 GiB RAM) in us-east-1. See pricing details.',
     pricingDetails: 'https://aws.amazon.com/opensearch-service/pricing/',
     setupComplexity: 'Medium',
   },
@@ -39,7 +39,7 @@ export const vectorDatabaseOptions = [
     id: 'aurora',
     name: 'Amazon Aurora with pgvector',
     description: 'PostgreSQL-compatible database with vector search extension',
-    pricing: 'Starting at $0.10 per hour for db.t3.small instance',
+    pricing: '',
     pricingDetails: 'https://aws.amazon.com/rds/aurora/pricing/',
     setupComplexity: 'Medium',
   },
@@ -47,7 +47,7 @@ export const vectorDatabaseOptions = [
     id: 'dynamodb',
     name: 'Amazon DynamoDB with vector search',
     description: 'Fully managed NoSQL database with vector search capabilities',
-    pricing: 'Pay per request and storage used',
+    pricing: '',
     pricingDetails: 'https://aws.amazon.com/dynamodb/pricing/',
     setupComplexity: 'Low',
   },
@@ -55,7 +55,7 @@ export const vectorDatabaseOptions = [
     id: 'kendra',
     name: 'Amazon Kendra',
     description: 'Intelligent search service with natural language capabilities',
-    pricing: 'Starting at $0.75 per hour for Developer Edition',
+    pricing: '',
     pricingDetails: 'https://aws.amazon.com/kendra/pricing/',
     setupComplexity: 'Low',
   },
@@ -63,40 +63,44 @@ export const vectorDatabaseOptions = [
     id: 'pinecone',
     name: 'Pinecone (3rd party)',
     description: 'Vector database optimized for vector search applications',
-    pricing: 'Starting at $0.096 per hour for a pod',
+    pricing: '',
     pricingDetails: 'https://www.pinecone.io/pricing/',
     setupComplexity: 'Low',
   },
 ];
 
-// Bedrock model options with pricing
+// Bedrock model options (pricing is dynamic; see pricingDetails for official docs)
 export const bedrockModelOptions = [
   {
     id: 'anthropic.claude-v2',
     name: 'Claude V2',
     provider: 'Anthropic',
-    pricing: '$11.02 per 1M input tokens, $32.68 per 1M output tokens',
+    pricing: '',
+    pricingDetails: 'https://aws.amazon.com/bedrock/pricing/',
     contextWindow: '100K tokens',
   },
   {
     id: 'anthropic.claude-3-sonnet-20240229-v1:0',
     name: 'Claude 3 Sonnet',
     provider: 'Anthropic',
-    pricing: '$3.00 per 1M input tokens, $15.00 per 1M output tokens',
+    pricing: '',
+    pricingDetails: 'https://aws.amazon.com/bedrock/pricing/',
     contextWindow: '200K tokens',
   },
   {
     id: 'anthropic.claude-3-haiku-20240307-v1:0',
     name: 'Claude 3 Haiku',
     provider: 'Anthropic',
-    pricing: '$0.25 per 1M input tokens, $1.25 per 1M output tokens',
+    pricing: '',
+    pricingDetails: 'https://aws.amazon.com/bedrock/pricing/',
     contextWindow: '200K tokens',
   },
   {
     id: 'amazon.titan-embed-text-v1',
     name: 'Titan Embeddings',
     provider: 'Amazon',
-    pricing: '$0.20 per 1M tokens',
+    pricing: '',
+    pricingDetails: 'https://aws.amazon.com/bedrock/pricing/',
     contextWindow: 'N/A (embedding model)',
   },
 ];
