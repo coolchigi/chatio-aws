@@ -91,14 +91,8 @@ interface ProjectConfig {
   const schema = a.schema({
     chat: a.conversation({
       aiModel: a.ai.model('${config.modelId}'),
-      systemPrompt: 'You are a helpful assistant that answers questions about uploaded PDF documents. Help users understand and analyze their documents.',
-      tools: [
-        a.ai.tool({
-          name: 'getPdfContent',
-          description: 'Retrieve content from uploaded PDF documents',
-        }),
-      ],
-    }),
+      systemPrompt: 'You are a helpful assistant that answers questions about uploaded PDF documents.',
+    }).authorization((allow) => allow.owner()),
   });
   
   export type Schema = ClientSchema<typeof schema>;
