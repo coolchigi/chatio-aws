@@ -267,7 +267,7 @@ const ProjectSetup: React.FC<ProjectSetupProps> = ({
                 color={tokens.colors.blue[70]}
                 marginTop={tokens.space.xxs}
               >
-                After this step, you'll configure document storage, select a
+                After this step, you'll select a
                 vector database, choose an AI model, and set up your knowledge
                 base.
               </Text>

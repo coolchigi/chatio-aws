@@ -1,5 +1,7 @@
 import React, { useState } from "react";
 import CostEstimator from "../../cost-optimizer/CostEstimator";
+import { downloadZip } from "../../../utils/downloadUtils";
+import { generateAmplifyProject } from '../../../generators/amplifyGenerator';
 
 interface CostSummaryProps {
   config: {
@@ -31,18 +33,9 @@ const CostSummary: React.FC<CostSummaryProps> = ({
     }, 3000);
   };
 
-  const handleExport = () => {
-    // In a real app, this would generate and download the template/code
-    const templateData = JSON.stringify(config, null, 2);
-    const blob = new Blob([templateData], { type: "application/json" });
-    const url = URL.createObjectURL(blob);
-
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `${config.name}-template.json`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
+  const handleExport = async () => {
+    const files = generateAmplifyProject(config);
+    await downloadZip(files, `${config.name}-amplify-app.zip`);
   };
 
   return (
@@ -99,10 +92,8 @@ const CostSummary: React.FC<CostSummaryProps> = ({
           </button>
         ) : (
           <button className="primary-button" onClick={handleExport}>
-            {config.deploymentOption === "cloudformation"
-              ? "Export CloudFormation Template"
-              : "Export CDK Code"}
-          </button>
+  Download Amplify Project
+</button>
         )}
       </div>
 
