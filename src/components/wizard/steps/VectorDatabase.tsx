@@ -19,6 +19,16 @@ import {
   SwitchField
 } from "@aws-amplify/ui-react";
 import { vectorDatabaseOptions } from "../../../config/aws-config";
+import { calculateOpenSearchCost } from '../../../cost/costCalculators';
+import { OPENSEARCH_PRICING } from '../../../cost/pricingData';
+import { useSelector, useDispatch } from 'react-redux';
+import { RootState } from '../../../store';
+import {
+  setVectorDb,
+  setStorageGB,
+  setEstimatedDocuments,
+  setEstimatedQueries
+} from '../../../store/costSlice';
 
 interface VectorDatabaseProps {
   config: {
@@ -41,14 +51,17 @@ const VectorDatabase: React.FC<VectorDatabaseProps> = ({
   onBack
 }) => {
   const { tokens } = useTheme();
-  const [selectedDb, setSelectedDb] = useState(config.vectorDatabaseId || "");
+  const dispatch = useDispatch();
+  // Use Redux state for all cost-related values
+  const selectedDb = useSelector((state: RootState) => state.cost.vectorDb);
+  const storageGB = useSelector((state: RootState) => state.cost.storageGB);
+  const estimatedDocuments = useSelector((state: RootState) => state.cost.estimatedDocuments);
+  const estimatedQueries = useSelector((state: RootState) => state.cost.estimatedQueries);
   const [error, setError] = useState("");
   const [showComparison, setShowComparison] = useState(false);
-  const [estimatedDocuments, setEstimatedDocuments] = useState(1000);
-  const [estimatedQueries, setEstimatedQueries] = useState(10000);
 
   const handleDatabaseChange = (value: string) => {
-    setSelectedDb(value);
+    dispatch(setVectorDb(value));
     updateConfig({ vectorDatabaseId: value });
     setError("");
   };
@@ -105,23 +118,39 @@ const VectorDatabase: React.FC<VectorDatabaseProps> = ({
     return scores[dbId as keyof typeof scores] || 70;
   };
 
-  const estimateMonthlyCost = (dbId: string) => {
-    const baseCosts = {
-      opensearch: 72, // ~$0.10/hour * 24 * 30
-      aurora: 75,
-      pinecone: 70,
-      dynamodb: 25,
-      kendra: 540 // ~$0.75/hour * 24 * 30
-    };
-
-    const documentMultiplier = Math.log10(estimatedDocuments) / 3;
-    const queryMultiplier = Math.log10(estimatedQueries) / 4;
-
-    return Math.round(
-      (baseCosts[dbId as keyof typeof baseCosts] || 50) *
-        (1 + documentMultiplier + queryMultiplier)
-    );
+  const getDbMonthlyCost = (dbId: string, storageGB: number, docCount: number, queryCount: number) => {
+    if (dbId === 'opensearch') {
+      const result = calculateOpenSearchCost({ storageGB });
+      return Math.round(result.total);
+    } else if (dbId === 'opensearch-serverless') {
+      const result = calculateOpenSearchCost({ storageGB, serverless: true });
+      return Math.round(result.total);
+    } else {
+      // Fallback for other DBs (mimic CostEstimator logic)
+      const avgDocSizeMB = 2;
+      const totalStorageGB = (docCount * avgDocSizeMB) / 1024;
+      let storageCost = 0;
+      switch (dbId) {
+        case 'aurora':
+          storageCost = totalStorageGB * 0.10;
+          break;
+        case 'dynamodb':
+          storageCost = totalStorageGB * 0.25;
+          break;
+        case 'kendra':
+          storageCost = docCount * 0.00025;
+          break;
+        case 'pinecone':
+          storageCost = totalStorageGB * 0.20;
+          break;
+        default:
+          storageCost = totalStorageGB * 0.15;
+      }
+      return Math.round(storageCost);
+    }
   };
+
+  const usageEstimated = estimatedDocuments > 0 && estimatedQueries > 0;
 
   return (
     <form onSubmit={handleSubmit}>
@@ -152,8 +181,6 @@ const VectorDatabase: React.FC<VectorDatabaseProps> = ({
             {error}
           </Alert>
         )}
-
-        {/* Usage Estimation */}
         <Card
           variation="outlined"
           padding={tokens.space.large}
@@ -177,26 +204,6 @@ const VectorDatabase: React.FC<VectorDatabaseProps> = ({
                 onChange={(e) => setShowComparison(e.target.checked)}
               />
             </Flex>
-
-            <Grid templateColumns="1fr 1fr" gap={tokens.space.medium}>
-              <SliderField
-                label={`Documents: ${estimatedDocuments.toLocaleString()}`}
-                min={100}
-                max={100000}
-                step={100}
-                value={estimatedDocuments}
-                onChange={(value) => setEstimatedDocuments(value)}
-              />
-
-              <SliderField
-                label={`Queries/month: ${estimatedQueries.toLocaleString()}`}
-                min={1000}
-                max={1000000}
-                step={1000}
-                value={estimatedQueries}
-                onChange={(value) => setEstimatedQueries(value)}
-              />
-            </Grid>
           </Flex>
         </Card>
 
@@ -212,7 +219,7 @@ const VectorDatabase: React.FC<VectorDatabaseProps> = ({
             {vectorDatabaseOptions.map((db) => {
               const isSelected = selectedDb === db.id;
               const recommendationScore = getRecommendationScore(db.id);
-              const estimatedCost = estimateMonthlyCost(db.id);
+              const estimatedCost = getDbMonthlyCost(db.id, storageGB, estimatedDocuments, estimatedQueries);
 
               return (
                 <Card
@@ -224,21 +231,22 @@ const VectorDatabase: React.FC<VectorDatabaseProps> = ({
                     isSelected ? tokens.colors.blue[10] : undefined
                   }
                   borderColor={isSelected ? tokens.colors.blue[60] : undefined}
-                  onClick={() => handleDatabaseChange(db.id)}
+                  onClick={() => usageEstimated && handleDatabaseChange(db.id)}
                   style={{
-                    cursor: "pointer",
+                    cursor: usageEstimated ? "pointer" : "not-allowed",
+                    opacity: usageEstimated ? 1 : 0.5,
                     transition: "all 0.2s ease",
                     transform: isSelected ? "translateY(-2px)" : "none"
                   }}
                 >
                   <Flex direction="column" gap={tokens.space.small}>
-                    {/* Header Row */}
                     <Flex alignItems="center" justifyContent="space-between">
                       <Flex alignItems="center" gap={tokens.space.small}>
                         <Radio
                           value={db.id}
                           name="vectorDatabase"
                           onChange={() => {}}
+                          disabled={!usageEstimated}
                         />
                         <Heading level={5} margin="0">
                           {db.name}
@@ -260,15 +268,6 @@ const VectorDatabase: React.FC<VectorDatabaseProps> = ({
                         >
                           {recommendationScore}% Match
                         </Badge>
-
-                        {/* Estimated Cost */}
-                        <Text
-                          fontSize={tokens.fontSizes.small}
-                          fontWeight={tokens.fontWeights.semibold}
-                          color={tokens.colors.green[70]}
-                        >
-                          ~${estimatedCost}/mo
-                        </Text>
                       </Flex>
                     </Flex>
 
@@ -340,9 +339,31 @@ const VectorDatabase: React.FC<VectorDatabaseProps> = ({
                                       >
                                         Pricing Structure
                                       </Text>
-                                      <Text fontSize={tokens.fontSizes.xs}>
-                                        {db.pricing}
-                                      </Text>
+                                      {db.id === 'opensearch' && (
+                                        <Text fontSize={tokens.fontSizes.xs}>
+                                          Example: t3.small.search (2 vCPU, 2 GiB RAM) starts at $0.036/hr in us-east-1. Pricing is based on instance type, node count, and storage. <Link href="https://aws.amazon.com/opensearch-service/pricing/" isExternal>See AWS OpenSearch Pricing</Link> for details.
+                                        </Text>
+                                      )}
+                                      {db.id === 'aurora' && (
+                                        <Text fontSize={tokens.fontSizes.xs}>
+                                          Example: db.t3.medium (2 vCPU, 4 GiB RAM) starts at $0.067/hr. Storage: $0.10/GB-month. <Link href="https://aws.amazon.com/rds/aurora/pricing/" isExternal>See Aurora Pricing</Link> for details.
+                                        </Text>
+                                      )}
+                                      {db.id === 'dynamodb' && (
+                                        <Text fontSize={tokens.fontSizes.xs}>
+                                          Pricing is based on read/write capacity and storage. Example: 25 GB storage and 200M write/200M read requests = ~$1.25/mo. <Link href="https://aws.amazon.com/dynamodb/pricing/" isExternal>See DynamoDB Pricing</Link> for details.
+                                        </Text>
+                                      )}
+                                      {db.id === 'kendra' && (
+                                        <Text fontSize={tokens.fontSizes.xs}>
+                                          Starts at $810/month for the Developer Edition. <Link href="https://aws.amazon.com/kendra/pricing/" isExternal>See Kendra Pricing</Link> for details.
+                                        </Text>
+                                      )}
+                                      {db.id === 'pinecone' && (
+                                        <Text fontSize={tokens.fontSizes.xs}>
+                                          Starter plan: $0.096/hr for 1 pod (1 vCPU, 4GB RAM). <Link href="https://www.pinecone.io/pricing/" isExternal>See Pinecone Pricing</Link> for details.
+                                        </Text>
+                                      )}
                                     </View>
 
                                     <View>
@@ -490,9 +511,14 @@ const VectorDatabase: React.FC<VectorDatabaseProps> = ({
                   color={tokens.colors.green[70]}
                 >
                   Estimated monthly cost:{" "}
-                  <strong>${estimateMonthlyCost(selectedDb)}</strong> for your
-                  usage pattern
+                  <strong>${getDbMonthlyCost(selectedDb, storageGB, estimatedDocuments, estimatedQueries)}</strong> for your usage pattern
                 </Text>
+                {/* Documentation links */}
+                <div style={{ fontSize: '0.8em', marginTop: 4 }}>
+                  <a href={OPENSEARCH_PRICING.docs.main} target="_blank" rel="noopener noreferrer">AWS OpenSearch Pricing</a> |{' '}
+                  <a href={OPENSEARCH_PRICING.docs.instance} target="_blank" rel="noopener noreferrer">Instance Pricing</a> |{' '}
+                  <a href={OPENSEARCH_PRICING.docs.calculator} target="_blank" rel="noopener noreferrer">AWS Calculator</a>
+                </div>
               </View>
             </Flex>
           </Card>
