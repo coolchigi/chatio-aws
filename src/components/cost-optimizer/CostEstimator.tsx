@@ -46,14 +46,24 @@ const CostEstimator: React.FC<CostEstimatorProps> = ({
     let computeBreakdown = '';
     let storageBreakdown = '';
     if (vectorDatabaseId === 'opensearch') {
-      const result = calculateOpenSearchCost({ storageGB: userStorageGB });
+      const result = calculateOpenSearchCost({
+        storageGB: userStorageGB,
+        nodes: 2, // minimum for serverless
+        instanceType: "serverless", // or a placeholder string
+        serverless: true
+      });
       computeCost = result.compute;
       storageCost = result.storage;
       totalCost = result.total;
       computeBreakdown = result.breakdown.compute;
       storageBreakdown = result.breakdown.storage;
     } else if (vectorDatabaseId === 'opensearch-serverless') {
-      const result = calculateOpenSearchCost({ storageGB: userStorageGB, serverless: true });
+      const result = calculateOpenSearchCost({
+        storageGB: userStorageGB,
+        nodes: 2, // minimum for serverless
+        instanceType: "serverless", // or a placeholder string
+        serverless: true
+      });
       computeCost = result.compute;
       storageCost = result.storage;
       totalCost = result.total;
