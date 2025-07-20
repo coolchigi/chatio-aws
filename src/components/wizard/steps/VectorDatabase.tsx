@@ -11,10 +11,8 @@ import {
   Badge,
   Radio,
   RadioGroupField,
-  Accordion,
   Link,
   Grid,
-  Icon,
   SliderField,
   SwitchField,
   SelectField
@@ -25,7 +23,6 @@ import { RootState } from '../../../store';
 import {
   setVectorDb,
   setStorageGB,
-  setEstimatedDocuments,
   setEstimatedQueries
 } from '../../../store/costSlice';
 import { 
@@ -66,13 +63,11 @@ const VectorDatabase: React.FC<VectorDatabaseProps> = ({
   const [error, setError] = useState("");
   const [showComparison, setShowComparison] = useState(false);
   
-  // User-configurable parameters - NO DEFAULTS!
   const [userConfig, setUserConfig] = useState({
-    opensearchNodes: 3,
-    opensearchInstanceType: 'or1.large.search',
-    opensearchServerless: false,
+    opensearchNodes: 2,
+    opensearchInstanceType: 't3.small.search',
     auroraNodes: 2,
-    auroraInstanceType: 'db.r5.large',
+    auroraInstanceType: 'db.t3.medium',
     kendraTier: 'developer' as 'developer' | 'enterprise',
     pineconePods: 1,
     pineconeTier: 'starter' as 'starter' | 'standard'
@@ -80,39 +75,47 @@ const VectorDatabase: React.FC<VectorDatabaseProps> = ({
   
   const [costs, setCosts] = useState<Record<string, { cost: number; breakdown: string; error?: string }>>({});
 
-  // Calculate costs when parameters change
   useEffect(() => {
     const newCosts: Record<string, { cost: number; breakdown: string; error?: string }> = {};
 
-    // OpenSearch Service
     try {
-      if (userConfig.opensearchServerless) {
-        const result = calculateOpenSearchCost({
-          storageGB,
-          nodes: 2, // Serverless minimum
-          instanceType: 'serverless',
-          serverless: true
-        });
-        newCosts.opensearch = {
-          cost: result.total,
-          breakdown: `Serverless: ${result.breakdown.compute} + ${result.breakdown.storage}`
-        };
-      } else {
-        const result = calculateOpenSearchCost({
-          storageGB,
-          nodes: userConfig.opensearchNodes,
-          instanceType: userConfig.opensearchInstanceType,
-          serverless: false
-        });
-        newCosts.opensearch = {
-          cost: result.total,
-          breakdown: `${result.breakdown.compute} + ${result.breakdown.storage}`
-        };
-      }
+      const result = calculateOpenSearchCost({
+        storageGB,
+        nodes: userConfig.opensearchNodes,
+        instanceType: userConfig.opensearchInstanceType,
+        serverless: false,
+        region: config.region
+      });
+      newCosts.opensearch = {
+        cost: result.total,
+        breakdown: `${result.breakdown.compute} + ${result.breakdown.storage}`
+      };
     } catch (error) {
+      console.error('OpenSearch cost calculation error:', error);
       newCosts.opensearch = {
         cost: 0,
-        breakdown: 'Configuration required',
+        breakdown: 'Error calculating cost',
+        error: error instanceof Error ? error.message : 'Unknown error'
+      };
+    }
+
+    try {
+      const result = calculateOpenSearchCost({
+        storageGB,
+        nodes: 2,
+        instanceType: 't3.small.search',
+        serverless: true,
+        region: config.region
+      });
+      newCosts['opensearch-serverless'] = {
+        cost: result.total,
+        breakdown: `Serverless: ${result.breakdown.compute} + ${result.breakdown.storage}`
+      };
+    } catch (error) {
+      console.error('OpenSearch Serverless cost calculation error:', error);
+      newCosts['opensearch-serverless'] = {
+        cost: 0,
+        breakdown: 'Error calculating cost',
         error: error instanceof Error ? error.message : 'Unknown error'
       };
     }
@@ -266,11 +269,6 @@ const VectorDatabase: React.FC<VectorDatabaseProps> = ({
                 <option value="or1.large.search">or1.large ($0.209/hr)</option>
                 <option value="or1.xlarge.search">or1.xlarge ($0.418/hr)</option>
               </SelectField>
-              <SwitchField
-                label="Use Serverless"
-                checked={userConfig.opensearchServerless}
-                onChange={(e) => setUserConfig(prev => ({ ...prev, opensearchServerless: e.target.checked }))}
-              />
             </Grid>
           </Card>
         )}
