@@ -1,11 +1,7 @@
-// Pricing data and documentation links for AWS services
-// Updated: January 2025 with current AWS pricing (US East - N. Virginia)
-
 export const OPENSEARCH_PRICING = {
-  // Instance pricing (per hour) - US East (N. Virginia)
+  // Instance pricing (per hour) - US East (N. Virginia)..from the AWS docs
   onDemandHourly: 0.209, // or1.large.search (2 vCPU, 16 GiB RAM)
   
-  // Instance options with hourly rates
   instances: {
     't3.small.search': 0.036,   // 2 vCPU, 2 GiB RAM - Dev/test
     't3.medium.search': 0.072,  // 2 vCPU, 4 GiB RAM - Small workloads
@@ -19,7 +15,8 @@ export const OPENSEARCH_PRICING = {
   
   // OpenSearch Serverless pricing
   serverlessOcuHourly: 0.24,    // Per OCU per hour
-  serverlessMinOcu: 2,          // Minimum OCUs required
+  serverlessMinOcu: 2,          // Minimum OCUs required (production with HA)
+  serverlessMinOcuDevTest: 1,   // Minimum OCUs for dev/test (no HA)
   serverlessStorageGbMonth: 0.024, // Per GB per month for serverless storage
   
   // UltraWarm storage
@@ -155,7 +152,6 @@ export function getRegionalPrice(basePrice: number, region: string): number {
   return basePrice * multiplier;
 }
 
-// Data freshness and source information
 export const PRICING_METADATA = {
   lastUpdated: '2025-01-12',
   baseRegion: 'us-east-1',
