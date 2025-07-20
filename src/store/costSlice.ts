@@ -8,7 +8,6 @@ export interface CostState {
   storageGB: number;
   estimatedDocuments: number;
   estimatedQueries: number;
-  // Add more as needed (e.g., deploymentOption)
 }
 
 const initialState: CostState = {
@@ -46,7 +45,6 @@ const costSlice = createSlice({
     setEstimatedQueries(state, action: PayloadAction<number>) {
       state.estimatedQueries = action.payload;
     },
-    // Add more actions as needed
     resetCostState(state) {
       Object.assign(state, initialState);
     }
