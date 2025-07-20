@@ -7,12 +7,12 @@ import {
   getRegionalPrice
 } from './pricingData';
 
-// NO HARDCODED VALUES - ALL PARAMETERS MUST BE PROVIDED BY USER
+// user configurable
 
 interface OpenSearchCostParams {
   storageGB: number;
-  nodes: number;              // USER MUST SPECIFY
-  instanceType: string;       // USER MUST SPECIFY  
+  nodes: number;             
+  instanceType: string;
   serverless?: boolean;
   region?: string;
 }
@@ -24,7 +24,7 @@ interface CostResult {
   breakdown: {
     compute: string;
     storage: string;
-    explanation: string;  // WHY this costs what it costs
+    explanation: string;
   };
 }
 
@@ -33,31 +33,31 @@ export function calculateOpenSearchCost({
   nodes,
   instanceType,
   serverless = false,
+  devTestMode = false,
   region = 'us-east-1'
-}: OpenSearchCostParams): CostResult {
+}: OpenSearchCostParams & { devTestMode?: boolean }): CostResult {
   
   if (serverless) {
-    // OpenSearch Serverless - minimum 2 OCUs always running
-    const baseComputeCost = OPENSEARCH_PRICING.serverlessMinOcu * 
-                           OPENSEARCH_PRICING.serverlessOcuHourly * 
-                           OPENSEARCH_PRICING.hoursPerMonth;
+    const minOcus = devTestMode ? OPENSEARCH_PRICING.serverlessMinOcuDevTest : OPENSEARCH_PRICING.serverlessMinOcu;
+    const baseComputeCost = minOcus * OPENSEARCH_PRICING.serverlessOcuHourly * OPENSEARCH_PRICING.hoursPerMonth;
     const compute = getRegionalPrice(baseComputeCost, region);
     
     const baseStorageCost = storageGB * OPENSEARCH_PRICING.serverlessStorageGbMonth;
     const storage = getRegionalPrice(baseStorageCost, region);
+    
+    const mode = devTestMode ? 'dev/test' : 'production (HA)';
     
     return {
       compute,
       storage,
       total: compute + storage,
       breakdown: {
-        compute: `${OPENSEARCH_PRICING.serverlessMinOcu} OCUs × $${OPENSEARCH_PRICING.serverlessOcuHourly}/hr × 730 hrs = $${compute.toFixed(2)}`,
-        storage: `${storageGB} GB × $${OPENSEARCH_PRICING.serverlessStorageGbMonth}/GB = $${storage.toFixed(2)}`,
-        explanation: `Serverless has a minimum of ${OPENSEARCH_PRICING.serverlessMinOcu} OCUs that run 24/7, regardless of usage. Each OCU provides 6GB RAM + CPU + storage.`
+        compute: `${minOcus} OCU${minOcus > 1 ? 's' : ''} (${mode}) × $${OPENSEARCH_PRICING.serverlessOcuHourly}/hr × 730 hrs = $${compute.toFixed(2)}`,
+        storage: `${storageGB} GB × $${OPENSEARCH_PRICING.serverlessStorageGbMonth}/GB/month = $${storage.toFixed(2)}`,
+        explanation: `Serverless ${mode} runs ${minOcus} OCU${minOcus > 1 ? 's' : ''} continuously. Each OCU = 6GB RAM + vCPU + storage. ${devTestMode ? 'Dev/test mode has no high availability.' : 'Production mode includes high availability across AZs.'}`
       }
     };
   } else {
-    // Regular OpenSearch Service
     const instanceHourlyRate = OPENSEARCH_PRICING.instances[instanceType as keyof typeof OPENSEARCH_PRICING.instances];
     
     if (!instanceHourlyRate) {
@@ -75,9 +75,9 @@ export function calculateOpenSearchCost({
       storage,
       total: compute + storage,
       breakdown: {
-        compute: `${nodes} nodes × ${instanceType} × $${instanceHourlyRate}/hr × 730 hrs = $${compute.toFixed(2)}`,
-        storage: `${storageGB} GB EBS storage × $${OPENSEARCH_PRICING.ebsGbMonth}/GB = $${storage.toFixed(2)}`,
-        explanation: `OpenSearch pricing is based on instance hours (running 24/7) plus EBS storage. You chose ${nodes} nodes for high availability${nodes >= 3 ? ' and fault tolerance' : ''}.`
+        compute: `${nodes} × ${instanceType} × $${instanceHourlyRate}/hr × 730 hrs = $${compute.toFixed(2)}`,
+        storage: `${storageGB} GB EBS (gp3) × $${OPENSEARCH_PRICING.ebsGbMonth}/GB/month = $${storage.toFixed(2)}`,
+        explanation: `Regular OpenSearch runs ${nodes} instance${nodes > 1 ? 's' : ''} 24/7. Instance type ${instanceType} chosen for your workload requirements.`
       }
     };
   }
@@ -85,9 +85,9 @@ export function calculateOpenSearchCost({
 
 interface AuroraCostParams {
   storageGB: number;
-  nodes: number;              // USER MUST SPECIFY (primary + replicas)
-  instanceType: string;       // USER MUST SPECIFY
-  estimatedIOPerMonth: number; // USER MUST SPECIFY OR CALCULATE FROM QUERIES
+  nodes: number;              
+  instanceType: string;      
+  estimatedIOPerMonth: number;
   region?: string;
 }
 
@@ -129,7 +129,7 @@ export function calculateAuroraCost({
 }
 
 interface KendraCostParams {
-  edition: 'developer' | 'enterprise';  // USER MUST SPECIFY
+  edition: 'developer' | 'enterprise';
   region?: string;
 }
 
@@ -161,8 +161,8 @@ export function calculateKendraCost({
 }
 
 interface PineconeCostParams {
-  pods: number;               // USER MUST SPECIFY
-  tier: 'starter' | 'standard'; // USER MUST SPECIFY
+  pods: number;              
+  tier: 'starter' | 'standard'; 
   region?: string;
 }
 
@@ -195,8 +195,8 @@ export function calculatePineconeCost({
 
 interface BedrockCostParams {
   modelId: string;
-  inputTokensPerMonth: number;   // USER MUST SPECIFY OR CALCULATE
-  outputTokensPerMonth: number;  // USER MUST SPECIFY OR CALCULATE
+  inputTokensPerMonth: number;   
+  outputTokensPerMonth: number;  
   region?: string;
 }
 
@@ -231,14 +231,13 @@ export function calculateBedrockCost({
   };
 }
 
-// Helper to estimate tokens from queries (USER CONFIGURABLE)
+// Helper function to estimate tokens from queries
 export function estimateTokensFromQueries(
   queriesPerMonth: number,
-  avgPromptLength: number,     // USER MUST SPECIFY
-  avgResponseLength: number    // USER MUST SPECIFY
+  avgPromptLength: number,     
+  avgResponseLength: number    
 ): { inputTokens: number; outputTokens: number } {
   
-  // Rough conversion: ~4 characters per token
   const inputTokensPerQuery = Math.ceil(avgPromptLength / 4);
   const outputTokensPerQuery = Math.ceil(avgResponseLength / 4);
   
@@ -247,5 +246,3 @@ export function estimateTokensFromQueries(
     outputTokens: queriesPerMonth * outputTokensPerQuery
   };
 }
-
-// NO MORE HARDCODED "REASONABLE DEFAULTS" - USERS MUST SPECIFY WHAT THEY WANT
