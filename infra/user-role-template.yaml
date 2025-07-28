@@ -1,0 +1,50 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'IAM Role for AWS Bedrock PDF Chat Application'
+
+Parameters:
+  TrustedAccountId:
+    Type: String
+    Description: 'AWS Account ID of the PDF Chat application backend'
+    AllowedPattern: '[0-9]{12}'
+    ConstraintDescription: 'Must be a valid 12-digit AWS Account ID'
+
+Resources:
+  ChatPDFRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub 'ChatPDFRole-${AWS::StackName}'
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              AWS: !Sub 'arn:aws:iam::${TrustedAccountId}:root'
+            Action: 'sts:AssumeRole'
+            Condition:
+              StringEquals:
+                'sts:ExternalId': 'pdf-chat-external-id'
+      Policies:
+        - PolicyName: 'S3BedrockAccess'
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - 's3:CreateBucket'
+                  - 's3:DeleteBucket'
+                  - 's3:ListBucket'
+                  - 's3:GetBucketLocation'
+                  - 's3:PutObject'
+                  - 's3:GetObject'
+                  - 's3:DeleteObject'
+                  - 's3:ListAllMyBuckets'
+                Resource: '*'
+              - Effect: Allow
+                Action:
+                  - 'bedrock:*'
+                Resource: '*'
+
+Outputs:
+  RoleArn:
+    Description: 'ARN of the created IAM role'
+    Value: !GetAtt ChatPDFRole.Arn
