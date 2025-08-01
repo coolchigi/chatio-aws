@@ -1,57 +1,33 @@
 {
-  "name": "chatio-aws-app",
-  "version": "0.1.0",
+  "name": "chatio-aws",
+  "version": "1.0.0",
+  "description": "AWS Bedrock PDF Chat - A hosted web app for chatting with PDFs using AWS Bedrock",
   "private": true,
-  "dependencies": {
-    "@aws-amplify/ui-react": "^6.11.1",
-    "@aws-amplify/ui-react-storage": "^3.10.3",
-    "@aws-sdk/client-bedrock": "^3.806.0",
-    "@aws-sdk/client-bedrock-runtime": "^3.806.0",
-    "@aws-sdk/client-cognito-identity-provider": "^3.806.0",
-    "@aws-sdk/client-s3": "^3.806.0",
-    "@reduxjs/toolkit": "^2.8.2",
-    "@testing-library/dom": "^10.4.0",
-    "@testing-library/jest-dom": "^6.6.3",
-    "@testing-library/react": "^16.3.0",
-    "@testing-library/user-event": "^13.5.0",
-    "@types/jest": "^27.5.2",
-    "@types/node": "^16.18.126",
-    "@types/react": "^19.1.3",
-    "@types/react-dom": "^19.1.3",
-    "aws-amplify": "^6.14.4",
-    "jszip": "^3.10.1",
-    "react": "^19.1.0",
-    "react-dom": "^19.1.0",
-    "react-redux": "^9.2.0",
-    "react-scripts": "5.0.1",
-    "typescript": "^4.9.5",
-    "web-vitals": "^2.1.4"
-  },
+  "workspaces": [
+    "packages/*"
+  ],
   "scripts": {
-    "start": "react-scripts start",
-    "build": "react-scripts build",
-    "test": "react-scripts test",
-    "eject": "react-scripts eject"
-  },
-  "eslintConfig": {
-    "extends": [
-      "react-app",
-      "react-app/jest"
-    ]
-  },
-  "browserslist": {
-    "production": [
-      ">0.2%",
-      "not dead",
-      "not op_mini all"
-    ],
-    "development": [
-      "last 1 chrome version",
-      "last 1 firefox version",
-      "last 1 safari version"
-    ]
+    "dev": "concurrently \"npm run dev:backend\" \"npm run dev:frontend\"",
+    "dev:frontend": "npm run dev --workspace=frontend",
+    "dev:backend": "npm run dev --workspace=backend",
+    "build": "npm run build --workspace=backend && npm run build --workspace=frontend",
+    "lint": "npm run lint --workspace=frontend && npm run lint --workspace=backend",
+    "type-check": "npm run type-check --workspace=frontend && npm run type-check --workspace=backend"
   },
   "devDependencies": {
-    "@types/jszip": "^3.4.0"
+    "concurrently": "^8.2.2"
+  },
+  "keywords": [
+    "aws",
+    "bedrock",
+    "pdf",
+    "chat",
+    "typescript",
+    "react"
+  ],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "@aws-sdk/client-iam": "^3.848.0"
   }
 }
