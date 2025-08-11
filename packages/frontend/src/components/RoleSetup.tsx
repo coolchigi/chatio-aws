@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 
-// hello
 const RoleSetup: React.FC = () => {
   const [roleArnInput, setRoleArnInput] = useState('');
   const { 
