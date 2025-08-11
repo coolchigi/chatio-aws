@@ -2,8 +2,8 @@ import React, { useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 
 const RoleSetup: React.FC = () => {
-  const [roleArnInput, setRoleArnInput] = useState('');
-  const { 
+const [roleArnInput, setRoleArnInput] = useState('');
+const { 
     isConnected, 
     isLoading, 
     error, 
