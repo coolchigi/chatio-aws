@@ -15,6 +15,7 @@
     "type-check": "npm run type-check --workspace=frontend && npm run type-check --workspace=backend"
   },
   "devDependencies": {
+    "@types/multer": "^2.0.0",
     "concurrently": "^8.2.2"
   },
   "keywords": [
@@ -28,6 +29,7 @@
   "author": "",
   "license": "MIT",
   "dependencies": {
-    "@aws-sdk/client-iam": "^3.848.0"
+    "@aws-sdk/client-iam": "^3.848.0",
+    "multer": "^2.0.2"
   }
 }
