@@ -1,0 +1,517 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'Amazon Bedrock Knowledge Base with OpenSearch Serverless as vector store'
+
+Parameters:
+  KnowledgeBaseName:
+    Type: String
+    Description: Name of the Bedrock Knowledge Base
+    Default: my-kb-opensearch
+    MinLength: 1
+    MaxLength: 100
+
+  KnowledgeBaseDescription:
+    Type: String
+    Description: Description of the Knowledge Base
+    Default: Knowledge Base using OpenSearch Serverless for vector storage
+
+  DataSourceName:
+    Type: String
+    Description: Name of the data source
+    Default: my-s3-datasource
+    MinLength: 1
+    MaxLength: 100
+
+  EmbeddingModelId:
+    Type: String
+    Description: Embedding model to convert text to vectors
+    Default: amazon.titan-embed-text-v2:0
+    AllowedValues:
+      - amazon.titan-embed-text-v1
+      - amazon.titan-embed-text-v2:0
+      - cohere.embed-english-v3
+      - cohere.embed-multilingual-v3
+    ConstraintDescription: Must be a valid Bedrock embedding model
+
+  EmbeddingDimensions:
+    Type: Number
+    Description: Vector dimensions for embeddings (1024 for Titan V2, 1536 for Titan V1, 1024 for Cohere)
+    Default: 1024
+    AllowedValues:
+      - 256
+      - 512
+      - 1024
+      - 1536
+
+  OpenSearchCollectionName:
+    Type: String
+    Description: Name of the OpenSearch Serverless collection
+    Default: bedrock-kb-collection
+    AllowedPattern: ^[a-z0-9](-*[a-z0-9])*
+    ConstraintDescription: Must be lowercase or numbers with hyphens, 1-32 characters
+    MinLength: 1
+    MaxLength: 32
+
+  OpenSearchIndexName:
+    Type: String
+    Description: Name of the vector index in OpenSearch
+    Default: bedrock-kb-index
+    MinLength: 1
+    MaxLength: 100
+
+  OpenSearchVectorFieldName:
+    Type: String
+    Description: Name of the vector field in the index
+    Default: bedrock-kb-vector
+    MinLength: 1
+    MaxLength: 100
+
+  OpenSearchTextFieldName:
+    Type: String
+    Description: Name of the text field in the index
+    Default: text
+    MinLength: 1
+    MaxLength: 100
+
+  OpenSearchMetadataFieldName:
+    Type: String
+    Description: Name of the metadata field in the index
+    Default: metadata
+    MinLength: 1
+    MaxLength: 100
+
+  ChunkingStrategy:
+    Type: String
+    Description: Strategy for chunking documents
+    Default: FIXED_SIZE
+    AllowedValues:
+      - FIXED_SIZE
+      - HIERARCHICAL
+      - SEMANTIC
+      - NONE
+
+  ChunkMaxTokens:
+    Type: Number
+    Description: Maximum tokens per chunk (for FIXED_SIZE strategy)
+    Default: 300
+    MinValue: 20
+    MaxValue: 8192
+
+  ChunkOverlapPercentage:
+    Type: Number
+    Description: Percentage overlap between chunks
+    Default: 20
+    MinValue: 1
+    MaxValue: 99
+
+  IAMUserArn:
+    Type: String
+    Description: ARN of the IAM user/role for OpenSearch access policies
+    AllowedPattern: ^arn:aws:iam::\d{12}:(user|role)/.+
+    ConstraintDescription: Must be a valid IAM user or role ARN
+
+Conditions:
+  UseFixedSizeChunking: !Equals [!Ref ChunkingStrategy, FIXED_SIZE]
+
+Resources:
+  # S3 Bucket for source documents
+  DataSourceBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Sub '${KnowledgeBaseName}-datasource-${AWS::AccountId}'
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: AES256
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+      VersioningConfiguration:
+        Status: Enabled
+
+  # IAM Role for Bedrock Knowledge Base
+  BedrockKnowledgeBaseRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub 'AmazonBedrockExecutionRoleForKB-${KnowledgeBaseName}'
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: bedrock.amazonaws.com
+            Action: sts:AssumeRole
+            Condition:
+              StringEquals:
+                aws:SourceAccount: !Ref AWS::AccountId
+              ArnLike:
+                aws:SourceArn: !Sub 'arn:${AWS::Partition}:bedrock:${AWS::Region}:${AWS::AccountId}:knowledge-base/*'
+      Policies:
+        - PolicyName: S3DataSourceAccess
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - s3:GetObject
+                  - s3:ListBucket
+                Resource:
+                  - !GetAtt DataSourceBucket.Arn
+                  - !Sub '${DataSourceBucket.Arn}/*'
+        - PolicyName: OpenSearchServerlessAccess
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - aoss:APIAccessAll
+                Resource: !GetAtt OpenSearchCollection.Arn
+        - PolicyName: BedrockModelAccess
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - bedrock:InvokeModel
+                  - bedrock:InvokeModelWithResponseStream
+                Resource:
+                  - !Sub 'arn:${AWS::Partition}:bedrock:${AWS::Region}::foundation-model/${EmbeddingModelId}'
+
+  # OpenSearch Serverless Encryption Policy
+  OpenSearchEncryptionPolicy:
+    Type: AWS::OpenSearchServerless::SecurityPolicy
+    Properties:
+      Name: !Sub '${OpenSearchCollectionName}-encryption'
+      Type: encryption
+      Policy: !Sub |
+        {
+          "Rules": [
+            {
+              "ResourceType": "collection",
+              "Resource": ["collection/${OpenSearchCollectionName}"]
+            }
+          ],
+          "AWSOwnedKey": true
+        }
+
+  # OpenSearch Serverless Network Policy (Public access)
+  OpenSearchNetworkPolicy:
+    Type: AWS::OpenSearchServerless::SecurityPolicy
+    Properties:
+      Name: !Sub '${OpenSearchCollectionName}-network'
+      Type: network
+      Policy: !Sub |
+        [
+          {
+            "Rules": [
+              {
+                "ResourceType": "collection",
+                "Resource": ["collection/${OpenSearchCollectionName}"]
+              },
+              {
+                "ResourceType": "dashboard",
+                "Resource": ["collection/${OpenSearchCollectionName}"]
+              }
+            ],
+            "AllowFromPublic": true
+          }
+        ]
+
+  # OpenSearch Serverless Collection
+  OpenSearchCollection:
+    Type: AWS::OpenSearchServerless::Collection
+    DependsOn:
+      - OpenSearchEncryptionPolicy
+      - OpenSearchNetworkPolicy
+    Properties:
+      Name: !Ref OpenSearchCollectionName
+      Type: VECTORSEARCH
+      Description: Vector search collection for Bedrock Knowledge Base
+
+  # OpenSearch Data Access Policy
+  OpenSearchDataAccessPolicy:
+    Type: AWS::OpenSearchServerless::AccessPolicy
+    Properties:
+      Name: !Sub '${OpenSearchCollectionName}-access'
+      Type: data
+      Policy: !Sub |
+        [
+          {
+            "Rules": [
+              {
+                "ResourceType": "index",
+                "Resource": ["index/${OpenSearchCollectionName}/*"],
+                "Permission": [
+                  "aoss:CreateIndex",
+                  "aoss:DeleteIndex",
+                  "aoss:UpdateIndex",
+                  "aoss:DescribeIndex",
+                  "aoss:ReadDocument",
+                  "aoss:WriteDocument"
+                ]
+              },
+              {
+                "ResourceType": "collection",
+                "Resource": ["collection/${OpenSearchCollectionName}"],
+                "Permission": [
+                  "aoss:CreateCollectionItems",
+                  "aoss:DeleteCollectionItems",
+                  "aoss:UpdateCollectionItems",
+                  "aoss:DescribeCollectionItems"
+                ]
+              }
+            ],
+            "Principal": [
+              "${IAMUserArn}",
+              "${BedrockKnowledgeBaseRole.Arn}"
+            ]
+          }
+        ]
+
+  # Custom Resource Lambda Execution Role
+  LambdaExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      Policies:
+        - PolicyName: OpenSearchAccess
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - aoss:APIAccessAll
+                Resource: !GetAtt OpenSearchCollection.Arn
+
+  # Lambda Function to Create Vector Index
+  CreateIndexFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: !Sub '${AWS::StackName}-CreateIndex'
+      Runtime: python3.12
+      Handler: index.handler
+      Role: !GetAtt LambdaExecutionRole.Arn
+      Timeout: 300
+      Code:
+        ZipFile: |
+          import json
+          import boto3
+          import cfnresponse
+          from opensearchpy import OpenSearch, RequestsHttpConnection, AWSV4SignerAuth
+          
+          def handler(event, context):
+              print(f"Event: {json.dumps(event)}")
+              
+              if event['RequestType'] == 'Delete':
+                  cfnresponse.send(event, context, cfnresponse.SUCCESS, {})
+                  return
+              
+              try:
+                  properties = event['ResourceProperties']
+                  host = properties['OpenSearchEndpoint']
+                  region = properties['Region']
+                  index_name = properties['IndexName']
+                  vector_field = properties['VectorField']
+                  text_field = properties['TextField']
+                  metadata_field = properties['MetadataField']
+                  dimensions = int(properties['Dimensions'])
+                  
+                  # Get credentials
+                  credentials = boto3.Session().get_credentials()
+                  auth = AWSV4SignerAuth(credentials, region, 'aoss')
+                  
+                  # Create OpenSearch client
+                  client = OpenSearch(
+                      hosts=[{'host': host, 'port': 443}],
+                      http_auth=auth,
+                      use_ssl=True,
+                      verify_certs=True,
+                      connection_class=RequestsHttpConnection,
+                      timeout=300
+                  )
+                  
+                  # Index mapping
+                  index_body = {
+                      "settings": {
+                          "index": {
+                              "knn": True,
+                              "knn.algo_param.ef_search": 512
+                          }
+                      },
+                      "mappings": {
+                          "properties": {
+                              vector_field: {
+                                  "type": "knn_vector",
+                                  "dimension": dimensions,
+                                  "method": {
+                                      "name": "hnsw",
+                                      "engine": "faiss",
+                                      "parameters": {
+                                          "ef_construction": 512,
+                                          "m": 16
+                                      },
+                                      "space_type": "l2"
+                                  }
+                              },
+                              text_field: {
+                                  "type": "text"
+                              },
+                              metadata_field: {
+                                  "type": "text"
+                              }
+                          }
+                      }
+                  }
+                  
+                  # Create index
+                  response = client.indices.create(index=index_name, body=index_body)
+                  print(f"Index created: {response}")
+                  
+                  cfnresponse.send(event, context, cfnresponse.SUCCESS, {
+                      'IndexName': index_name,
+                      'Status': 'Created'
+                  })
+                  
+              except Exception as e:
+                  print(f"Error: {str(e)}")
+                  cfnresponse.send(event, context, cfnresponse.FAILED, {
+                      'Error': str(e)
+                  })
+
+  # Custom Resource to Create Index
+  CreateIndexResource:
+    Type: Custom::CreateIndex
+    DependsOn:
+      - OpenSearchCollection
+      - OpenSearchDataAccessPolicy
+    Properties:
+      ServiceToken: !GetAtt CreateIndexFunction.Arn
+      OpenSearchEndpoint: !GetAtt OpenSearchCollection.CollectionEndpoint
+      Region: !Ref AWS::Region
+      IndexName: !Ref OpenSearchIndexName
+      VectorField: !Ref OpenSearchVectorFieldName
+      TextField: !Ref OpenSearchTextFieldName
+      MetadataField: !Ref OpenSearchMetadataFieldName
+      Dimensions: !Ref EmbeddingDimensions
+
+  # Bedrock Knowledge Base with OpenSearch Serverless
+  BedrockKnowledgeBase:
+    Type: AWS::Bedrock::KnowledgeBase
+    DependsOn:
+      - BedrockKnowledgeBaseRole
+      - CreateIndexResource
+    Properties:
+      Name: !Ref KnowledgeBaseName
+      Description: !Ref KnowledgeBaseDescription
+      RoleArn: !GetAtt BedrockKnowledgeBaseRole.Arn
+      KnowledgeBaseConfiguration:
+        Type: VECTOR
+        VectorKnowledgeBaseConfiguration:
+          EmbeddingModelArn: !Sub 'arn:${AWS::Partition}:bedrock:${AWS::Region}::foundation-model/${EmbeddingModelId}'
+          EmbeddingModelConfiguration:
+            BedrockEmbeddingModelConfiguration:
+              Dimensions: !Ref EmbeddingDimensions
+      StorageConfiguration:
+        Type: OPENSEARCH_SERVERLESS
+        OpensearchServerlessConfiguration:
+          CollectionArn: !GetAtt OpenSearchCollection.Arn
+          VectorIndexName: !Ref OpenSearchIndexName
+          FieldMapping:
+            VectorField: !Ref OpenSearchVectorFieldName
+            TextField: !Ref OpenSearchTextFieldName
+            MetadataField: !Ref OpenSearchMetadataFieldName
+
+  # Data Source connecting to S3 bucket
+  BedrockDataSource:
+    Type: AWS::Bedrock::DataSource
+    Properties:
+      KnowledgeBaseId: !Ref BedrockKnowledgeBase
+      Name: !Ref DataSourceName
+      Description: S3 data source for Knowledge Base
+      DataSourceConfiguration:
+        Type: S3
+        S3Configuration:
+          BucketArn: !GetAtt DataSourceBucket.Arn
+      VectorIngestionConfiguration:
+        ChunkingConfiguration:
+          ChunkingStrategy: !Ref ChunkingStrategy
+          FixedSizeChunkingConfiguration: !If
+            - UseFixedSizeChunking
+            - MaxTokens: !Ref ChunkMaxTokens
+              OverlapPercentage: !Ref ChunkOverlapPercentage
+            - !Ref AWS::NoValue
+
+Outputs:
+  KnowledgeBaseId:
+    Description: ID of the Bedrock Knowledge Base
+    Value: !Ref BedrockKnowledgeBase
+    Export:
+      Name: !Sub '${AWS::StackName}-KnowledgeBaseId'
+
+  KnowledgeBaseArn:
+    Description: ARN of the Bedrock Knowledge Base
+    Value: !GetAtt BedrockKnowledgeBase.KnowledgeBaseArn
+    Export:
+      Name: !Sub '${AWS::StackName}-KnowledgeBaseArn'
+
+  DataSourceId:
+    Description: ID of the Data Source
+    Value: !Ref BedrockDataSource
+    Export:
+      Name: !Sub '${AWS::StackName}-DataSourceId'
+
+  DataSourceBucketName:
+    Description: Name of the S3 bucket for source documents
+    Value: !Ref DataSourceBucket
+    Export:
+      Name: !Sub '${AWS::StackName}-DataSourceBucket'
+
+  DataSourceBucketArn:
+    Description: ARN of the S3 bucket for source documents
+    Value: !GetAtt DataSourceBucket.Arn
+
+  OpenSearchCollectionArn:
+    Description: ARN of the OpenSearch Serverless collection
+    Value: !GetAtt OpenSearchCollection.Arn
+
+  OpenSearchCollectionEndpoint:
+    Description: Endpoint of the OpenSearch Serverless collection
+    Value: !GetAtt OpenSearchCollection.CollectionEndpoint
+
+  OpenSearchDashboardURL:
+    Description: URL for OpenSearch Dashboards
+    Value: !GetAtt OpenSearchCollection.DashboardEndpoint
+
+  OpenSearchIndexName:
+    Description: Name of the vector index in OpenSearch
+    Value: !Ref OpenSearchIndexName
+
+  BedrockRoleArn:
+    Description: ARN of the IAM role used by Bedrock
+    Value: !GetAtt BedrockKnowledgeBaseRole.Arn
+
+  EmbeddingModelUsed:
+    Description: Embedding model being used
+    Value: !Ref EmbeddingModelId
+
+  ConsoleURL:
+    Description: Direct link to Knowledge Base in AWS Console
+    Value: !Sub 'https://console.aws.amazon.com/bedrock/home?region=${AWS::Region}#/knowledge-bases/${BedrockKnowledgeBase}'
+
+  UsageInstructions:
+    Description: Next steps to use your Knowledge Base
+    Value: !Sub |
+      1. Upload documents to S3 bucket: ${DataSourceBucket}
+      2. Sync the data source via AWS Console or CLI
+      3. Use Knowledge Base ID: ${BedrockKnowledgeBase} in your application
+      4. Query using RetrieveAndGenerate API with your preferred chat model
+      5. Estimated OpenSearch cost: ~$260/month (4 OCUs minimum)

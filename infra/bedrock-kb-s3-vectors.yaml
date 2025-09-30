@@ -1,0 +1,264 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'Amazon Bedrock Knowledge Base with S3 Vectors as vector store'
+
+Parameters:
+  KnowledgeBaseName:
+    Type: String
+    Description: Name of the Bedrock Knowledge Base
+    Default: my-kb-s3-vectors
+    MinLength: 1
+    MaxLength: 100
+
+  KnowledgeBaseDescription:
+    Type: String
+    Description: Description of the Knowledge Base
+    Default: Knowledge Base using S3 Vectors for cost-effective vector storage
+
+  DataSourceName:
+    Type: String
+    Description: Name of the data source
+    Default: my-s3-datasource
+    MinLength: 1
+    MaxLength: 100
+
+  EmbeddingModelId:
+    Type: String
+    Description: Embedding model to convert text to vectors
+    Default: amazon.titan-embed-text-v2:0
+    AllowedValues:
+      - amazon.titan-embed-text-v1
+      - amazon.titan-embed-text-v2:0
+      - cohere.embed-english-v3
+      - cohere.embed-multilingual-v3
+    ConstraintDescription: Must be a valid Bedrock embedding model
+
+  EmbeddingDimensions:
+    Type: Number
+    Description: Vector dimensions for embeddings (1024 for Titan V2, 1536 for Titan V1, 1024 for Cohere)
+    Default: 1024
+    AllowedValues:
+      - 256
+      - 512
+      - 1024
+      - 1536
+
+  VectorBucketName:
+    Type: String
+    Description: Name for the S3 Vector bucket (must be globally unique)
+    AllowedPattern: ^[a-z0-9][a-z0-9-]*[a-z0-9]$
+    ConstraintDescription: Must be lowercase, alphanumeric with hyphens
+    MinLength: 3
+    MaxLength: 63
+
+  VectorIndexName:
+    Type: String
+    Description: Name for the vector index in S3
+    Default: bedrock-kb-index
+    MinLength: 1
+    MaxLength: 100
+
+  ChunkingStrategy:
+    Type: String
+    Description: Strategy for chunking documents
+    Default: FIXED_SIZE
+    AllowedValues:
+      - FIXED_SIZE
+      - HIERARCHICAL
+      - SEMANTIC
+      - NONE
+
+  ChunkMaxTokens:
+    Type: Number
+    Description: Maximum tokens per chunk (for FIXED_SIZE strategy)
+    Default: 300
+    MinValue: 20
+    MaxValue: 8192
+
+  ChunkOverlapPercentage:
+    Type: Number
+    Description: Percentage overlap between chunks
+    Default: 20
+    MinValue: 1
+    MaxValue: 99
+
+Conditions:
+  UseFixedSizeChunking: !Equals [!Ref ChunkingStrategy, FIXED_SIZE]
+
+Resources:
+  # S3 Bucket for source documents
+  DataSourceBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Sub '${KnowledgeBaseName}-datasource-${AWS::AccountId}'
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: AES256
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+      VersioningConfiguration:
+        Status: Enabled
+
+  # IAM Role for Bedrock Knowledge Base
+  BedrockKnowledgeBaseRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub 'AmazonBedrockExecutionRoleForKB-${KnowledgeBaseName}'
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: bedrock.amazonaws.com
+            Action: sts:AssumeRole
+            Condition:
+              StringEquals:
+                aws:SourceAccount: !Ref AWS::AccountId
+              ArnLike:
+                aws:SourceArn: !Sub 'arn:${AWS::Partition}:bedrock:${AWS::Region}:${AWS::AccountId}:knowledge-base/*'
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/AmazonBedrockFullAccess
+      Policies:
+        - PolicyName: S3DataSourceAccess
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - s3:GetObject
+                  - s3:ListBucket
+                Resource:
+                  - !GetAtt DataSourceBucket.Arn
+                  - !Sub '${DataSourceBucket.Arn}/*'
+        - PolicyName: S3VectorsAccess
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - s3:CreateVectorBucket
+                  - s3:GetVectorBucket
+                  - s3:DeleteVectorBucket
+                  - s3:ListVectorBuckets
+                  - s3:CreateVectorIndex
+                  - s3:GetVectorIndex
+                  - s3:DeleteVectorIndex
+                  - s3:ListVectorIndexes
+                  - s3:PutVectorData
+                  - s3:GetVectorData
+                  - s3:DeleteVectorData
+                  - s3:QueryVectors
+                Resource:
+                  - !Sub 'arn:${AWS::Partition}:s3:${AWS::Region}:${AWS::AccountId}:vector-bucket/${VectorBucketName}'
+                  - !Sub 'arn:${AWS::Partition}:s3:${AWS::Region}:${AWS::AccountId}:vector-bucket/${VectorBucketName}/*'
+        - PolicyName: BedrockModelAccess
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - bedrock:InvokeModel
+                  - bedrock:InvokeModelWithResponseStream
+                Resource:
+                  - !Sub 'arn:${AWS::Partition}:bedrock:${AWS::Region}::foundation-model/${EmbeddingModelId}'
+
+  # Bedrock Knowledge Base with S3 Vectors
+  BedrockKnowledgeBase:
+    Type: AWS::Bedrock::KnowledgeBase
+    DependsOn: BedrockKnowledgeBaseRole
+    Properties:
+      Name: !Ref KnowledgeBaseName
+      Description: !Ref KnowledgeBaseDescription
+      RoleArn: !GetAtt BedrockKnowledgeBaseRole.Arn
+      KnowledgeBaseConfiguration:
+        Type: VECTOR
+        VectorKnowledgeBaseConfiguration:
+          EmbeddingModelArn: !Sub 'arn:${AWS::Partition}:bedrock:${AWS::Region}::foundation-model/${EmbeddingModelId}'
+          EmbeddingModelConfiguration:
+            BedrockEmbeddingModelConfiguration:
+              Dimensions: !Ref EmbeddingDimensions
+      StorageConfiguration:
+        Type: S3
+        S3Configuration:
+          VectorBucketArn: !Sub 'arn:${AWS::Partition}:s3:${AWS::Region}:${AWS::AccountId}:vector-bucket/${VectorBucketName}'
+          VectorIndexName: !Ref VectorIndexName
+
+  # Data Source connecting to S3 bucket
+  BedrockDataSource:
+    Type: AWS::Bedrock::DataSource
+    Properties:
+      KnowledgeBaseId: !Ref BedrockKnowledgeBase
+      Name: !Ref DataSourceName
+      Description: S3 data source for Knowledge Base
+      DataSourceConfiguration:
+        Type: S3
+        S3Configuration:
+          BucketArn: !GetAtt DataSourceBucket.Arn
+      VectorIngestionConfiguration:
+        ChunkingConfiguration:
+          ChunkingStrategy: !Ref ChunkingStrategy
+          FixedSizeChunkingConfiguration: !If
+            - UseFixedSizeChunking
+            - MaxTokens: !Ref ChunkMaxTokens
+              OverlapPercentage: !Ref ChunkOverlapPercentage
+            - !Ref AWS::NoValue
+
+Outputs:
+  KnowledgeBaseId:
+    Description: ID of the Bedrock Knowledge Base
+    Value: !Ref BedrockKnowledgeBase
+    Export:
+      Name: !Sub '${AWS::StackName}-KnowledgeBaseId'
+
+  KnowledgeBaseArn:
+    Description: ARN of the Bedrock Knowledge Base
+    Value: !GetAtt BedrockKnowledgeBase.KnowledgeBaseArn
+    Export:
+      Name: !Sub '${AWS::StackName}-KnowledgeBaseArn'
+
+  DataSourceId:
+    Description: ID of the Data Source
+    Value: !Ref BedrockDataSource
+    Export:
+      Name: !Sub '${AWS::StackName}-DataSourceId'
+
+  DataSourceBucketName:
+    Description: Name of the S3 bucket for source documents
+    Value: !Ref DataSourceBucket
+    Export:
+      Name: !Sub '${AWS::StackName}-DataSourceBucket'
+
+  DataSourceBucketArn:
+    Description: ARN of the S3 bucket for source documents
+    Value: !GetAtt DataSourceBucket.Arn
+
+  VectorBucketArn:
+    Description: ARN of the S3 Vector bucket
+    Value: !Sub 'arn:${AWS::Partition}:s3:${AWS::Region}:${AWS::AccountId}:vector-bucket/${VectorBucketName}'
+
+  VectorIndexName:
+    Description: Name of the vector index in S3
+    Value: !Ref VectorIndexName
+
+  BedrockRoleArn:
+    Description: ARN of the IAM role used by Bedrock
+    Value: !GetAtt BedrockKnowledgeBaseRole.Arn
+
+  EmbeddingModelUsed:
+    Description: Embedding model being used
+    Value: !Ref EmbeddingModelId
+
+  ConsoleURL:
+    Description: Direct link to Knowledge Base in AWS Console
+    Value: !Sub 'https://console.aws.amazon.com/bedrock/home?region=${AWS::Region}#/knowledge-bases/${BedrockKnowledgeBase}'
+
+  UsageInstructions:
+    Description: Next steps to use your Knowledge Base
+    Value: !Sub |
+      1. Upload documents to S3 bucket: ${DataSourceBucket}
+      2. Sync the data source via AWS Console or CLI
+      3. Use Knowledge Base ID: ${BedrockKnowledgeBase} in your application
+      4. Query using RetrieveAndGenerate API with your preferred chat model
