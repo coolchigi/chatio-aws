@@ -1,119 +1,67 @@
-import { Router, Request, Response } from 'express';
-import { assumeRoleAndCache, clearSession, getCacheStats } from '../services/stsService';
-import { AssumeRoleRequest, AssumeRoleResponse, LogoutRequest } from '../types/aws';
+import { Router } from 'express';
+import { STSClient, AssumeRoleCommand } from '@aws-sdk/client-sts';
+import rateLimit from 'express-rate-limit';
 
 const router = Router();
 
-/**
- * POST /api/auth/assume-role
- * Assumes an IAM role and returns a session ID for cached credentials
- */
-router.post('/assume-role', async (req: Request<{}, AssumeRoleResponse, AssumeRoleRequest>, res: Response<AssumeRoleResponse>) => {
+const stsClient = new STSClient({ 
+  region: process.env.AWS_REGION || 'us-east-1' 
+});
+
+const EXTERNAL_ID = process.env.EXTERNAL_ID || 'pdf-chat-external-id';
+
+// Rate limiting: 10 requests per 15 minutes per IP
+const assumeRoleLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 10,
+  message: { error: 'Too many assume-role requests. Try again later.' }
+});
+
+router.post('/assume-role', assumeRoleLimiter, async (req, res) => {
   try {
     const { roleArn } = req.body;
 
-    // Validate request body
-    if (!roleArn || typeof roleArn !== 'string') {
-      return res.status(400).json({
-        success: false,
-        error: 'Role ARN is required and must be a string'
-      });
+    if (!roleArn) {
+      return res.status(400).json({ error: 'Role ARN is required' });
     }
 
-    // Trim whitespace (users might copy-paste with extra spaces)
-    const trimmedRoleArn = roleArn.trim();
-
-    if (!trimmedRoleArn) {
-      return res.status(400).json({
-        success: false,
-        error: 'Role ARN cannot be empty'
-      });
+    // Validate ARN format
+    const arnRegex = /^arn:aws:iam::\d{12}:role\/[\w+=,.@-]+$/;
+    if (!arnRegex.test(roleArn)) {
+      return res.status(400).json({ error: 'Invalid Role ARN format' });
     }
 
-    console.log(`Role assumption request for: ${trimmedRoleArn}`);
-
-    // Attempt to assume the role
-    const result = await assumeRoleAndCache(trimmedRoleArn);
-
-    if (result.success) {
-      return res.status(200).json({
-        success: true,
-        sessionId: result.sessionId,
-        expiresAt: result.expiresAt?.toISOString()
-      });
-    } else {
-      // Return client error for role assumption failures
-      return res.status(400).json({
-        success: false,
-        error: result.error
-      });
-    }
-
-  } catch (error: any) {
-    console.error('Unexpected error in assume-role endpoint:', error);
-    
-    // Return generic error for unexpected failures
-    return res.status(500).json({
-      success: false,
-      error: 'Internal server error occurred while assuming role'
+    const command = new AssumeRoleCommand({
+      RoleArn: roleArn,
+      RoleSessionName: `pdf-chat-${Date.now()}`,
+      DurationSeconds: 3600, // 1 hour
+      ExternalId: EXTERNAL_ID
     });
-  }
-});
 
-/**
- * POST /api/auth/logout
- * Clears a session and removes cached credentials
- */
-router.post('/logout', (req: Request<{}, {}, LogoutRequest>, res: Response) => {
-  try {
-    const { sessionId } = req.body;
+    const response = await stsClient.send(command);
 
-    if (!sessionId || typeof sessionId !== 'string') {
-      return res.status(400).json({
-        success: false,
-        error: 'Session ID is required'
-      });
+    if (!response.Credentials) {
+      return res.status(500).json({ error: 'Failed to get credentials' });
     }
 
-    const cleared = clearSession(sessionId);
-    
-    console.log(`Logout request for session: ${sessionId}, cleared: ${cleared}`);
-
-    return res.status(200).json({
-      success: true,
-      message: cleared ? 'Session cleared successfully' : 'Session not found (may have already expired)'
+    res.json({
+      accessKeyId: response.Credentials.AccessKeyId,
+      secretAccessKey: response.Credentials.SecretAccessKey,
+      sessionToken: response.Credentials.SessionToken,
+      expiration: response.Credentials.Expiration
     });
 
   } catch (error: any) {
-    console.error('Error in logout endpoint:', error);
+    console.error('AssumeRole error:', error);
     
-    return res.status(500).json({
-      success: false,
-      error: 'Internal server error occurred during logout'
-    });
-  }
-});
+    if (error.name === 'AccessDenied') {
+      return res.status(403).json({ 
+        error: 'Access denied. Check role trust policy and external ID.' 
+      });
+    }
 
-/**
- * GET /api/auth/status
- * Returns session status and cache statistics (for debugging)
- */
-router.get('/status', (_req: Request, res: Response) => {
-  try {
-    const stats = getCacheStats();
-    
-    return res.status(200).json({
-      success: true,
-      cacheStats: stats,
-      serverTime: new Date().toISOString()
-    });
-
-  } catch (error: any) {
-    console.error('Error in status endpoint:', error);
-    
-    return res.status(500).json({
-      success: false,
-      error: 'Internal server error occurred while getting status'
+    res.status(500).json({ 
+      error: error.message || 'Failed to assume role' 
     });
   }
 });
