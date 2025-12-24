@@ -1,35 +1,14 @@
 {
   "name": "chatio-aws",
   "version": "1.0.0",
-  "description": "AWS Bedrock PDF Chat - A hosted web app for chatting with PDFs using AWS Bedrock",
   "private": true,
   "workspaces": [
     "packages/*"
   ],
   "scripts": {
-    "dev": "concurrently \"npm run dev:backend\" \"npm run dev:frontend\"",
-    "dev:frontend": "npm run dev --workspace=frontend",
-    "dev:backend": "npm run dev --workspace=backend",
-    "build": "npm run build --workspace=backend && npm run build --workspace=frontend",
-    "lint": "npm run lint --workspace=frontend && npm run lint --workspace=backend",
-    "type-check": "npm run type-check --workspace=frontend && npm run type-check --workspace=backend"
-  },
-  "devDependencies": {
-    "@types/multer": "^2.0.0",
-    "concurrently": "^8.2.2"
-  },
-  "keywords": [
-    "aws",
-    "bedrock",
-    "pdf",
-    "chat",
-    "typescript",
-    "react"
-  ],
-  "author": "",
-  "license": "MIT",
-  "dependencies": {
-    "@aws-sdk/client-iam": "^3.848.0",
-    "multer": "^2.0.2"
+    "dev:frontend": "npm run dev --workspace=packages/frontend",
+    "dev:backend": "npm run dev --workspace=packages/backend",
+    "build:frontend": "npm run build --workspace=packages/frontend",
+    "build:backend": "npm run build --workspace=packages/backend"
   }
 }
