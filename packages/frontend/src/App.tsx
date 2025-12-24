@@ -1,6 +1,7 @@
 import { SessionProvider, useSession } from './SessionContext';
 import { RoleSetup } from './components/RoleSetup';
 import { SessionTimer } from './components/SessionTimer';
+import { S3Manager } from './components/S3Manager';
 
 function AppContent() {
   const { credentials } = useSession();
@@ -13,7 +14,7 @@ function AppContent() {
     <div>
       <SessionTimer />
       <h1>AWS Bedrock PDF Chat</h1>
-      <p>Connected! Ready to build S3Manager and other components...</p>
+      <S3Manager />
     </div>
   );
 }
