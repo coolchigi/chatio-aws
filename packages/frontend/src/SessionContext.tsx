@@ -17,8 +17,10 @@ interface SessionContextType {
   credentials: SessionCredentials | null;
   resources: SessionResource[];
   roleArn: string | null;
+  bucketName: string | null;
   setCredentials: (creds: SessionCredentials | null) => void;
   setRoleArn: (arn: string | null) => void;
+  setBucketName: (name: string | null) => void;
   addResource: (resource: SessionResource) => void;
   clearSession: () => void;
   isExpired: () => boolean;
@@ -34,6 +36,10 @@ export function SessionProvider({ children }: { children: ReactNode }) {
 
   const [roleArn, setRoleArn] = useState<string | null>(() => {
     return localStorage.getItem('role-arn');
+  });
+
+  const [bucketName, setBucketName] = useState<string | null>(() => {
+    return localStorage.getItem('bucket-name');
   });
 
   const [resources, setResources] = useState<SessionResource[]>(() => {
@@ -58,6 +64,14 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   }, [roleArn]);
 
   useEffect(() => {
+    if (bucketName) {
+      localStorage.setItem('bucket-name', bucketName);
+    } else {
+      localStorage.removeItem('bucket-name');
+    }
+  }, [bucketName]);
+
+  useEffect(() => {
     localStorage.setItem('session-resources', JSON.stringify(resources));
   }, [resources]);
 
@@ -73,6 +87,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   const clearSession = () => {
     setCredentials(null);
     setRoleArn(null);
+    setBucketName(null);
     setResources([]);
     localStorage.clear();
   };
@@ -83,8 +98,10 @@ export function SessionProvider({ children }: { children: ReactNode }) {
         credentials,
         resources,
         roleArn,
+        bucketName,
         setCredentials,
         setRoleArn,
+        setBucketName,
         addResource,
         clearSession,
         isExpired
